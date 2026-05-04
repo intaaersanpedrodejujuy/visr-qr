@@ -6,11 +6,15 @@
 </head>
 <body>
 
-<h2>Buscar persona</h2>
+<h2>Validación de persona</h2>
 
-<select id="selector" onchange="mostrarQR()">
+<select id="selector">
   <option value="">-- Seleccionar --</option>
 </select>
+
+<br><br>
+
+<input type="text" id="dni_input" placeholder="Ingresar DNI" onkeyup="mostrarQR()">
 
 <br><br>
 
@@ -20,18 +24,6 @@
 
 <img id="qr" width="250" style="border:1px solid #ccc; display:none;">
 
-<button onclick="test()">Probar imagen</button>
-
-<script>
-function test(){
-  document.getElementById("qr").src =
-  "https://drive.google.com/uc?export=view&id=1N17m3pZRRqd1mAiQbiZOKyA23C1L6LVH";
-  document.getElementById("qr").style.display = "block";
-}
-</script>
-
-
-
 <script>
 let datos = [];
 
@@ -39,75 +31,81 @@ fetch('datos.csv')
   .then(response => response.text())
   .then(text => {
 
-    let filas = text.trim().split(/\r?\n/); // soporta \n y \r\n
+    let filas = text.trim().split(/\r?\n/);
 
     filas.slice(1).forEach(fila => {
 
-      if(!fila.trim()) return; // salta líneas vacías
+      if(!fila.trim()) return;
 
       let columnas = fila.split(',');
 
-      if(columnas.length < 5){
-        console.log("Fila ignorada:", fila);
-        return;
-      }
+      if(columnas.length < 5) return;
 
       let registro = {
         nombre: columnas[0].trim(),
         dni1: columnas[1].trim(),
         dni2: columnas[2].trim(),
-        qr: columnas[3].trim(),
         qr_url: columnas[4].trim()
       };
 
-      if(registro.nombre){
-        datos.push(registro);
+      datos.push(registro);
 
-        let option = document.createElement("option");
-        option.value = registro.nombre;
-        option.text = registro.nombre;
-        document.getElementById("selector").appendChild(option);
-      }
+      let option = document.createElement("option");
+      option.value = registro.nombre;
+      option.text = registro.nombre;
+      document.getElementById("selector").appendChild(option);
 
     });
 
-    console.log("Datos cargados:", datos);
   });
 
-function convertirDrive(url){
-  if(!url) return "";
-
-  if(url.includes("drive.google.com")){
-    let match = url.match(/\/d\/(.*?)\//);
-    if(match && match[1]){
-      return "https://drive.google.com/uc?export=view&id=" + match[1];
-    }
-  }
-
-  return url; // si no es de Drive, la deja igual
-}
-
 function mostrarQR(){
+
   let nombre = document.getElementById("selector").value;
+  let dniIngresado = document.getElementById("dni_input").value.trim();
+
   let registro = datos.find(d => d.nombre === nombre);
 
-  if(!registro){
-    document.getElementById("info").innerHTML = "No encontrado";
-    document.getElementById("qr").style.display = "none";
+  let info = document.getElementById("info");
+  let img = document.getElementById("qr");
+
+  if(!nombre){
+    info.innerHTML = "Seleccione una persona";
+    img.style.display = "none";
     return;
   }
 
-  document.getElementById("info").innerHTML =
-    "<b>Nombre:</b> " + registro.nombre + "<br>" +
-    "<b>DNI:</b> " + (registro.dni1 || registro.dni2 || "-");
+  if(!dniIngresado){
+    info.innerHTML = "Ingrese DNI";
+    img.style.display = "none";
+    return;
+  }
 
-  let urlFinal = convertirDrive(registro.qr_url);
+  if(!registro){
+    info.innerHTML = "No encontrado";
+    img.style.display = "none";
+    return;
+  }
 
-  console.log("URL usada:", urlFinal);
+  let dniValido =
+    (registro.dni1 && registro.dni1 === dniIngresado) ||
+    (registro.dni2 && registro.dni2 === dniIngresado);
 
-  let img = document.getElementById("qr");
-  img.src = urlFinal;
-  img.style.display = "block";
+  if(dniValido){
+
+    info.innerHTML =
+      "<b>Nombre:</b> " + registro.nombre + "<br>" +
+      "<b>DNI:</b> " + dniIngresado;
+
+    img.src = registro.qr_url;
+    img.style.display = "block";
+
+  } else {
+
+    info.innerHTML = "❌ DNI incorrecto";
+    img.style.display = "none";
+
+  }
 }
 </script>
 
